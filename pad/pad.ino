@@ -34,7 +34,7 @@ const byte buttons[] = {
 
 // Dpad buttons, n/s/e/w:
 const byte dpad_buttons[] = {
-  'n', 's', 'e', 'w'
+  KEY_UP_ARROW, KEY_DOWN_ARROW, KEY_RIGHT_ARROW, KEY_LEFT_ARROW
 };
 
 //////////////////////////////////////////////////
@@ -98,26 +98,32 @@ void loop(){
 void read_dpad(){
   int h = analogRead(horizontal);
   int v = analogRead(vertical);
+  int dir_pressed = 0;
   
   // North
-  press_release_dpad(0, v >= v_max);
+  dir_pressed |= press_release_dpad(0, v >= v_max);
   
   // South
-  press_release_dpad(1, v <= v_min);
+  dir_pressed |= press_release_dpad(1, v <= v_min);
 
   // East
-  press_release_dpad(2, h <= h_min);
+  dir_pressed |= press_release_dpad(2, h <= h_min);
 
   // West
-  press_release_dpad(3, h >= h_max);
+  dir_pressed |= press_release_dpad(3, h >= h_max);
+  
+  if(!dir_pressed) Keyboard.set_key2(0);
+  Keyboard.send_now();
 }
 
-void press_release_dpad(int dir, int pressed){
+// Returns 1 if a keystroke was sent
+int press_release_dpad(int dir, int pressed){
   if(pressed){
-    if(dpad_state[dir] == 0) Keyboard.press(dpad_buttons[dir]);
+    if(dpad_state[dir] == 0) Keyboard.set_key2(dpad_buttons[dir]);
     dpad_state[dir] = 1;
   } else {
-    if(dpad_state[dir] == 1) Keyboard.release(dpad_buttons[dir]);
     dpad_state[dir] = 0;
   }
+  
+  return dpad_state[dir];
 }
