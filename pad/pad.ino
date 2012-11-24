@@ -27,7 +27,7 @@ const int pins[] = {
   1, 2, 13, 14, 15, 4
 };
 
-// And their corresponding letters
+// And their corresponding letters (these must be printable chars)
 const byte buttons[] = {
   '1', '2', 'b', 'r', 'y', 'g'
 };
@@ -57,7 +57,6 @@ void setup(){
   //Setup the pin modes.
   pinMode( led_pin, OUTPUT );
 
-
   // Initialize button pins with pull-ups:
   for(int n = 0; n < num_buttons; n++){
     pinMode(pins[n], INPUT);
@@ -71,6 +70,7 @@ void setup(){
   pinMode(vertical, INPUT);
   
   Keyboard.begin();
+  Mouse.begin();
 }
 
 void loop(){
@@ -93,7 +93,73 @@ void loop(){
   digitalWrite(led_pin, dpad_mode);
 
   if(dpad_mode) read_dpad();
+  else read_analog();
 }
+
+//////////////////////////////////////////////////////////////////
+////// Analog (mouse) mode stuff: ////////////////////////////////
+//////////////////////////////////////////////////////////////////
+
+// A lot of this is adapted from http://arduino.cc/en/Reference/MouseMove
+
+int range = 4;               // output range of X or Y movement
+int responseDelay = 3;       // response delay of the mouse, in ms
+int threshold = range/4;      // resting threshold
+int center = range/2;         // resting position value
+int maxima[] = { 
+  1023, 1023};                // actual analogRead minima for {x, y}
+int minima[] = {
+  0,0};                       // actual analogRead maxima for {x, y}
+int axis[] = {
+  horizontal, vertical};              // pin numbers for {x, y}
+int mouseReading[2];          // final mouse readings for {x, y}
+
+void read_analog(){
+  int xReading = -1 * readAxis(0);
+  int yReading = -1 * readAxis(1);
+
+  // move the mouse:
+  Mouse.move(xReading, yReading, 0);
+  delay(responseDelay);
+}
+
+/*
+  reads an analog pin and scales the 
+  analog input range to a range from 0 to <range>
+*/
+
+int readAxis(int axisNumber) {
+  int distance = 0;    // distance from center of the output range
+
+  // read the analog input:
+  int reading = analogRead(axis[axisNumber]);
+
+  // of the current reading exceeds the max or min for this axis,
+  // reset the max or min:
+  if (reading < minima[axisNumber]) {
+    minima[axisNumber] = reading;
+  }
+  
+  if (reading > maxima[axisNumber]) {
+    maxima[axisNumber] = reading;
+  }
+
+  // map the reading from the analog input range to the output range:
+  reading = map(reading, minima[axisNumber], maxima[axisNumber], 0, range);
+
+ // if the output reading is outside from the
+ // rest position threshold,  use it:
+  if (abs(reading - center) > threshold) {
+    distance = (reading - center);
+  } 
+
+  // return the distance for this axis:
+  return distance;
+}
+
+//////////////////////////////////////////////////////////////////
+////// D-pad (keyboard arrow keys) mode stuff: ///////////////////
+//////////////////////////////////////////////////////////////////
 
 void read_dpad(){
   int h = analogRead(horizontal);
