@@ -37,6 +37,11 @@ const byte dpad_buttons[] = {
   KEY_UP_ARROW, KEY_DOWN_ARROW, KEY_RIGHT_ARROW, KEY_LEFT_ARROW
 };
 
+// In analog mode, two buttons act as left and right click:
+const int mouse_pins[] = {
+  15, 14 // left, right
+};
+
 //////////////////////////////////////////////////
 // State stuff ///////////////////////////////////
 //////////////////////////////////////////////////
@@ -74,14 +79,6 @@ void setup(){
 }
 
 void loop(){
-  // Read button states
-  for(int n = 0; n < num_buttons; n++){
-    int new_pin_state = (digitalRead(pins[n]) == LOW);
-    if(pin_states[n] && !new_pin_state) Keyboard.release(buttons[n]);
-    else if(!pin_states[n] && new_pin_state) Keyboard.press(buttons[n]);
-    pin_states[n] = new_pin_state;
-  }
-
   // Check for analog mode toggle
   int analog_this_cycle = digitalRead(dpad_toggle) == LOW;
   if(analog_pressed && ! analog_this_cycle){
@@ -92,6 +89,27 @@ void loop(){
 
   digitalWrite(led_pin, dpad_mode);
 
+  // Handle all the face buttons:
+  if(dpad_mode){ // We're in dpad mode, so these send keyboard presses
+    for(int n = 0; n < num_buttons; n++){
+      int new_pin_state = (digitalRead(pins[n]) == LOW);
+      if(pin_states[n] && !new_pin_state) Keyboard.release(buttons[n]);
+      else if(!pin_states[n] && new_pin_state) Keyboard.press(buttons[n]);
+      pin_states[n] = new_pin_state;
+    }
+  } else { // Analog mouse mode, a couple of these send clicks and the others do nothing:
+      int new_left_state = (digitalRead(mouse_pins[0]) == LOW);
+      int old_left_state = Mouse.isPressed(MOUSE_LEFT);
+      if(old_left_state && !new_left_state) Mouse.release(MOUSE_LEFT);
+      else if(!old_left_state && new_left_state) Mouse.press(MOUSE_LEFT);
+
+      int new_right_state = (digitalRead(mouse_pins[1]) == LOW);
+      int old_right_state = Mouse.isPressed(MOUSE_RIGHT);
+      if(old_right_state && !new_right_state) Mouse.release(MOUSE_RIGHT);
+      else if(!old_right_state && new_right_state) Mouse.press(MOUSE_RIGHT);
+  }
+
+  // Handle movement of the stick:
   if(dpad_mode) read_dpad();
   else read_analog();
 }
