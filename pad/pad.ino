@@ -56,7 +56,7 @@ int pin_states[] = {
 int dpad_state[] = { 0, 0, 0, 0 }; // n, s, e, w
 
 int analog_pressed = 0;
-int dpad_mode = true;
+int dpad_mode = false;
 
 void setup(){
   //Setup the pin modes.
@@ -87,7 +87,7 @@ void loop(){
   }
   analog_pressed = analog_this_cycle;
 
-  digitalWrite(led_pin, dpad_mode);
+  digitalWrite(led_pin, !dpad_mode);
 
   // Handle all the face buttons:
   if(dpad_mode){ // We're in dpad mode, so these send keyboard presses
