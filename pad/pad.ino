@@ -1,45 +1,48 @@
+#include <button.h>
+
 //////////////////////////////////////////////////
 // Config  ///////////////////////////////////////
 //////////////////////////////////////////////////
 
-// Pin with an LED on it
-const int led_pin = 11;
-
-// Number of buttons on the pad
-const int num_buttons = 6;
+// Pin with an LED on it, to get lit up in mouse mode:
+const int LED_PIN = 11;
 
 // Pin for the dpad / mouse toggle
-const int dpad_toggle = 0;
+const int DPAD_TOGGLE = 0;
+
+///////////////////
+// Mouse mode cfg
+///////////////////
 
 // Pins for analog axes
-const int horizontal = 21;
-const int vertical = 20;
+const int HORIZONTAL = 21;
+const int VERTICAL = 20;
 
-// Limits for analog sticks
-const int h_max = 1010;
-const int h_min = 0;
+// In analog mode, two buttons act as left and right click:
+const int MOUSE_PINS[] = {
+  15, 14 // left, right
+};
 
-const int v_max = 1010;
-const int v_min = 0;
+///////////////////
+// DPad mode cfg
+///////////////////
+
+// Number of buttons on the pad
+const int NUM_BUTTONS = 6;
+
+// Dpad threshholds for analog sticks
+const int H_MAX = 1010, H_MIN = 0;
+
+const int V_MAX = 1010, V_MIN = 0;
 
 // The pins we're using...
-const int pins[] = {
+const int BUTTON_PINS[] = {
   1, 2, 13, 14, 15, 4
 };
 
 // And their corresponding letters (these must be printable chars)
-const byte buttons[] = {
+const byte BUTTON_KEYS[] = {
   '1', '2', 'b', 'r', 'y', 'g'
-};
-
-// Dpad buttons, n/s/e/w:
-const byte dpad_buttons[] = {
-  KEY_UP_ARROW, KEY_DOWN_ARROW, KEY_RIGHT_ARROW, KEY_LEFT_ARROW
-};
-
-// In analog mode, two buttons act as left and right click:
-const int mouse_pins[] = {
-  15, 14 // left, right
 };
 
 //////////////////////////////////////////////////
@@ -60,19 +63,19 @@ int dpad_mode = false;
 
 void setup(){
   //Setup the pin modes.
-  pinMode( led_pin, OUTPUT );
+  pinMode( LED_PIN, OUTPUT );
 
   // Initialize button pins with pull-ups:
-  for(int n = 0; n < num_buttons; n++){
-    pinMode(pins[n], INPUT);
-    digitalWrite(pins[n], HIGH);
+  for(int n = 0; n < NUM_BUTTONS; n++){
+    pinMode(BUTTON_PINS[n], INPUT);
+    digitalWrite(BUTTON_PINS[n], HIGH);
   }
 
-  pinMode(dpad_toggle, INPUT);
-  digitalWrite(dpad_toggle, HIGH);
+  pinMode(DPAD_TOGGLE, INPUT);
+  digitalWrite(DPAD_TOGGLE, HIGH);
 
-  pinMode(horizontal, INPUT);
-  pinMode(vertical, INPUT);
+  pinMode(HORIZONTAL, INPUT);
+  pinMode(VERTICAL, INPUT);
   
   Keyboard.begin();
   Mouse.begin();
@@ -80,30 +83,30 @@ void setup(){
 
 void loop(){
   // Check for analog mode toggle
-  int analog_this_cycle = digitalRead(dpad_toggle) == LOW;
+  int analog_this_cycle = digitalRead(DPAD_TOGGLE) == LOW;
   if(analog_pressed && ! analog_this_cycle){
     dpad_mode = !dpad_mode; // Toggle dpad mode
     Keyboard.releaseAll(); // An emergency out for the keyboard
   }
   analog_pressed = analog_this_cycle;
 
-  digitalWrite(led_pin, !dpad_mode);
+  digitalWrite(LED_PIN, !dpad_mode);
 
   // Handle all the face buttons:
   if(dpad_mode){ // We're in dpad mode, so these send keyboard presses
-    for(int n = 0; n < num_buttons; n++){
-      int new_pin_state = (digitalRead(pins[n]) == LOW);
-      if(pin_states[n] && !new_pin_state) Keyboard.release(buttons[n]);
-      else if(!pin_states[n] && new_pin_state) Keyboard.press(buttons[n]);
+    for(int n = 0; n < NUM_BUTTONS; n++){
+      int new_pin_state = (digitalRead(BUTTON_PINS[n]) == LOW);
+      if(pin_states[n] && !new_pin_state) Keyboard.release(BUTTON_KEYS[n]);
+      else if(!pin_states[n] && new_pin_state) Keyboard.press(BUTTON_KEYS[n]);
       pin_states[n] = new_pin_state;
     }
   } else { // Analog mouse mode, a couple of these send clicks and the others do nothing:
-      int new_left_state = (digitalRead(mouse_pins[0]) == LOW);
+      int new_left_state = (digitalRead(MOUSE_PINS[0]) == LOW);
       int old_left_state = Mouse.isPressed(MOUSE_LEFT);
       if(old_left_state && !new_left_state) Mouse.release(MOUSE_LEFT);
       else if(!old_left_state && new_left_state) Mouse.press(MOUSE_LEFT);
 
-      int new_right_state = (digitalRead(mouse_pins[1]) == LOW);
+      int new_right_state = (digitalRead(MOUSE_PINS[1]) == LOW);
       int old_right_state = Mouse.isPressed(MOUSE_RIGHT);
       if(old_right_state && !new_right_state) Mouse.release(MOUSE_RIGHT);
       else if(!old_right_state && new_right_state) Mouse.press(MOUSE_RIGHT);
@@ -129,7 +132,7 @@ int maxima[] = {
 int minima[] = {
   0,0};                       // actual analogRead maxima for {x, y}
 int axis[] = {
-  horizontal, vertical};              // pin numbers for {x, y}
+  HORIZONTAL, VERTICAL};              // pin numbers for {x, y}
 int mouseReading[2];          // final mouse readings for {x, y}
 
 void read_analog(){
@@ -180,30 +183,23 @@ int readAxis(int axisNumber) {
 //////////////////////////////////////////////////////////////////
 
 void read_dpad(){
-  int h = analogRead(horizontal);
-  int v = analogRead(vertical);
+  int h = analogRead(HORIZONTAL);
+  int v = analogRead(VERTICAL);
   int dir_pressed = 0;
   
-  // North
-  dir_pressed |= press_release_dpad(0, v >= v_max);
-  
-  // South
-  dir_pressed |= press_release_dpad(1, v <= v_min);
-
-  // East
-  dir_pressed |= press_release_dpad(2, h <= h_min);
-
-  // West
-  dir_pressed |= press_release_dpad(3, h >= h_max);
+  dir_pressed |= press_release_dpad(0, v >= V_MAX, KEY_UP_ARROW);
+  dir_pressed |= press_release_dpad(1, v <= V_MIN, KEY_DOWN_ARROW);
+  dir_pressed |= press_release_dpad(2, h <= H_MIN, KEY_RIGHT_ARROW);
+  dir_pressed |= press_release_dpad(3, h >= H_MAX, KEY_LEFT_ARROW);
   
   if(!dir_pressed) Keyboard.set_key2(0);
   Keyboard.send_now();
 }
 
 // Returns 1 if a keystroke was sent
-int press_release_dpad(int dir, int pressed){
+int press_release_dpad(int dir, int pressed, int key){
   if(pressed){
-    if(dpad_state[dir] == 0) Keyboard.set_key2(dpad_buttons[dir]);
+    if(dpad_state[dir] == 0) Keyboard.set_key2(key);
     dpad_state[dir] = 1;
   } else {
     dpad_state[dir] = 0;
