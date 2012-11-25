@@ -1,4 +1,4 @@
-#include <button.h>
+#include "Key.h"
 
 //////////////////////////////////////////////////
 // Config  ///////////////////////////////////////
@@ -10,6 +10,9 @@ const int LED_PIN = 11;
 // Pin for the dpad / mouse toggle
 const int DPAD_TOGGLE = 0;
 
+int analog_pressed = 0;
+int dpad_mode = false;
+
 ///////////////////
 // Mouse mode cfg
 ///////////////////
@@ -19,8 +22,8 @@ const int HORIZONTAL = 21;
 const int VERTICAL = 20;
 
 // In analog mode, two buttons act as left and right click:
-const int MOUSE_PINS[] = {
-  15, 14 // left, right
+Key mouse[] = {
+  Key(15), Key(14) // left, right
 };
 
 ///////////////////
@@ -32,56 +35,52 @@ const int NUM_BUTTONS = 6;
 
 // Dpad threshholds for analog sticks
 const int H_MAX = 1010, H_MIN = 0;
-
 const int V_MAX = 1010, V_MIN = 0;
 
 // The pins we're using...
-const int BUTTON_PINS[] = {
-  1, 2, 13, 14, 15, 4
+Key buttons[] = {
+  Key(1),
+  Key(2),
+  Key(13),
+  Key(14),
+  Key(15),
+  Key(4)
 };
 
 // And their corresponding letters (these must be printable chars)
 const byte BUTTON_KEYS[] = {
+  //KEY_1, KEY_2, KEY_B, KEY_R, KEY_Y, KEY_G
   '1', '2', 'b', 'r', 'y', 'g'
 };
 
-//////////////////////////////////////////////////
-// State stuff ///////////////////////////////////
-//////////////////////////////////////////////////
-
-// Pin states (this must have as many 0s as num_buttons, so if
-// you change that, change this). If it's a 1, the button is pressed
-int pin_states[] = {
-  0, 0, 0, 0, 0, 0
-};
-
 // These, however, there should be only 4 of.
-int dpad_state[] = { 0, 0, 0, 0 }; // n, s, e, w
+int dpad_state[4] = {0, 0, 0, 0};
 
-int analog_pressed = 0;
-int dpad_mode = false;
+//////////////////////////////////////////////////
+// Setup /////////////////////////////////////////
+//////////////////////////////////////////////////
 
 void setup(){
-  //Setup the pin modes.
-  pinMode( LED_PIN, OUTPUT );
-
-  // Initialize button pins with pull-ups:
-  for(int n = 0; n < NUM_BUTTONS; n++){
-    pinMode(BUTTON_PINS[n], INPUT);
-    digitalWrite(BUTTON_PINS[n], HIGH);
-  }
-
+  // Setup the pin modes.
+  pinMode(LED_PIN, OUTPUT );
+  pinMode(HORIZONTAL, INPUT);
+  pinMode(VERTICAL, INPUT);
   pinMode(DPAD_TOGGLE, INPUT);
   digitalWrite(DPAD_TOGGLE, HIGH);
 
-  pinMode(HORIZONTAL, INPUT);
-  pinMode(VERTICAL, INPUT);
-  
+  // Setup pullup resistors
+  for(int n = 0; n < 6; n++)
+    buttons[n].init();
+
+  // Start USB services
   Keyboard.begin();
   Mouse.begin();
+  Serial.begin(9600);
 }
 
 void loop(){
+  //Serial.println("Hello world");
+  
   // Check for analog mode toggle
   int analog_this_cycle = digitalRead(DPAD_TOGGLE) == LOW;
   if(analog_pressed && ! analog_this_cycle){
@@ -94,27 +93,38 @@ void loop(){
 
   // Handle all the face buttons:
   if(dpad_mode){ // We're in dpad mode, so these send keyboard presses
-    for(int n = 0; n < NUM_BUTTONS; n++){
-      int new_pin_state = (digitalRead(BUTTON_PINS[n]) == LOW);
-      if(pin_states[n] && !new_pin_state) Keyboard.release(BUTTON_KEYS[n]);
-      else if(!pin_states[n] && new_pin_state) Keyboard.press(BUTTON_KEYS[n]);
-      pin_states[n] = new_pin_state;
-    }
+    read_buttons();
   } else { // Analog mouse mode, a couple of these send clicks and the others do nothing:
-      int new_left_state = (digitalRead(MOUSE_PINS[0]) == LOW);
-      int old_left_state = Mouse.isPressed(MOUSE_LEFT);
-      if(old_left_state && !new_left_state) Mouse.release(MOUSE_LEFT);
-      else if(!old_left_state && new_left_state) Mouse.press(MOUSE_LEFT);
-
-      int new_right_state = (digitalRead(MOUSE_PINS[1]) == LOW);
-      int old_right_state = Mouse.isPressed(MOUSE_RIGHT);
-      if(old_right_state && !new_right_state) Mouse.release(MOUSE_RIGHT);
-      else if(!old_right_state && new_right_state) Mouse.press(MOUSE_RIGHT);
+    read_mouse();
   }
 
   // Handle movement of the stick:
   if(dpad_mode) read_dpad();
   else read_analog();
+}
+
+void read_buttons(){
+  for(int n = 0; n < NUM_BUTTONS; n++){
+    Key *k = buttons+n;
+
+    if(k->update()){
+      // These are on pullups, so falling means pressed
+      if(k->falling()) Keyboard.press(BUTTON_KEYS[n]);
+      else Keyboard.release(BUTTON_KEYS[n]);
+    }
+  }
+}
+
+void read_mouse(){
+  if(mouse[0].update()){
+    if(mouse[0].falling()) Mouse.press(MOUSE_LEFT);
+    else Mouse.release(MOUSE_LEFT);
+  }
+
+  if(mouse[1].update()){
+    if(mouse[1].falling()) Mouse.press(MOUSE_RIGHT);
+    else Mouse.release(MOUSE_RIGHT);
+  }
 }
 
 //////////////////////////////////////////////////////////////////
