@@ -39,18 +39,12 @@ const int V_MAX = 1010, V_MIN = 0;
 
 // The pins we're using...
 Key buttons[] = {
-  Key(1),
-  Key(2),
-  Key(13),
-  Key(14),
-  Key(15),
-  Key(4)
-};
-
-// And their corresponding letters (these must be printable chars)
-const byte BUTTON_KEYS[] = {
-  //KEY_1, KEY_2, KEY_B, KEY_R, KEY_Y, KEY_G
-  '1', '2', 'b', 'r', 'y', 'g'
+  Key(1, KEY_1, 1),
+  Key(2, KEY_2, 1),
+  Key(13, KEY_B, 2),
+  Key(14, KEY_R, 3),
+  Key(15, KEY_Y, 4),
+  Key(4, KEY_G, 5)
 };
 
 // These, however, there should be only 4 of.
@@ -62,7 +56,7 @@ int dpad_state[4] = {0, 0, 0, 0};
 
 void setup(){
   // Setup the pin modes.
-  pinMode(LED_PIN, OUTPUT );
+  pinMode(LED_PIN, OUTPUT);
   pinMode(HORIZONTAL, INPUT);
   pinMode(VERTICAL, INPUT);
   pinMode(DPAD_TOGGLE, INPUT);
@@ -109,10 +103,12 @@ void read_buttons(){
 
     if(k->update()){
       // These are on pullups, so falling means pressed
-      if(k->falling()) Keyboard.press(BUTTON_KEYS[n]);
-      else Keyboard.release(BUTTON_KEYS[n]);
+      if(k->falling()) k->press();
+      else k->release();
     }
   }
+  
+  Keyboard.send_now();
 }
 
 void read_mouse(){
